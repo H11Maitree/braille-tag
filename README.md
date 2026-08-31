@@ -1,48 +1,83 @@
 # Braille Tag Maker
 
-> Screenshot placeholder: run `npm run dev`, then capture the responsive editor and 3D preview.
+**A web app for making 3D printable Thai and English Braille tags.**
 
-A static, browser-only tool for creating printable raised-Braille name tags and optional keychain tags. Text, geometry, booleans, preview, and 3MF creation stay on the device; there is no API, backend, database, or cloud processing.
+[Open the app](https://h11maitree.github.io/braille-tag/) · [Report an issue](https://github.com/H11Maitree/braille-tag/issues)
 
-## Input and translation
+![Braille Tag Maker: 3D tag preview alongside its editing controls](docs/preview.png)
 
-The editor accepts English, Thai, punctuation, numbers, spaces, and explicit newlines. Lines are normalized with `\r\n? → \n` then translated independently, so blank lines and manual row breaks are preserved and no automatic wrapping occurs.
+Braille Tag Maker turns mixed Thai and English text into raised 6-dot Braille, previews the result in 3D, and exports a printable `.3mf` file. Translation, layout, geometry, booleans, and export all run locally in the browser—your text never leaves your device.
 
-Translation uses Liblouis through the stable `native-liblouis` WebAssembly runtime. The app vendors official Liblouis **3.37.0** `th-g1.utb` and `th-g1.uti` table assets; `th-g1.utb` includes the bundled `en-ueb-g1.ctb`, providing one mixed Thai + English Grade-1 path. Output is Unicode Braille via `unicode.dis`.
+## Features
 
-The Liblouis runtime/table assets are LGPL-2.1-or-later; the Thai table carries its own copyright notice. Review those licenses before redistribution. The application code in this project is supplied independently of Liblouis.
+- Mixed Thai and English Grade-1 Braille, including numbers, punctuation, and indicators
+- Explicit newlines and blank lines are preserved exactly; the editor never silently wraps the physical Braille layout
+- Fixed tactile Braille dimensions with a plate that grows to fit the content
+- Smooth raised spherical-cap Braille dots and a rounded printable plate
+- Optional top-left keychain lobe with a complete through-hole and material-wall validation
+- Interactive Three.js preview with orbit controls and dynamic camera fitting
+- One merged, manifold manufacturing solid generated with Manifold
+- Standards-shaped, millimetre-based `.3mf` export generated entirely in the browser
+- Compact shareable URLs—no account, server, local storage, or cloud processing required
 
-## Physical model
+## How it works
 
-Braille dimensions are intentionally fixed at signage values: 1.55 mm dot diameter, 0.70 mm raised height, 2.40 mm intra-cell pitch, 6.20 mm cell pitch, and 10.00 mm line pitch. The tag expands around that geometry rather than scaling tactile characters.
+1. Enter Thai, English, or a mixture of both.
+2. Adjust the plate or enable the keychain attachment.
+3. Inspect the tag in the live 3D preview.
+4. Export a printable `.3mf` file.
 
-The plate is an extruded rounded outline. Its padding is also its corner radius. Enabling a keychain changes just the top-left corner to square, unions a disk whose centre is the original top-left corner, then subtracts a full through-hole. The hole is validated using radial clearance to raised Braille and a 1.2 mm minimum wall; its radius is not compared to plate thickness, because those are independent dimensions.
+## Braille translation
 
-The preview uses composited Three.js meshes for responsiveness. Export builds the same numeric layout with `manifold-3d`: plate → lobe union → hole subtraction → dome unions. Raised dots use intersecting spherical caps, producing a single printable manifold solid.
+The app uses the Liblouis WebAssembly runtime and the official Liblouis **3.37.0** Thai Grade-1 table (`th-g1.utb`). That table includes `en-ueb-g1.ctb`, so Thai and English are translated together through one Unicode-Braille translation path. Each user-entered line is translated independently after Windows newline normalization, preserving manual and blank rows.
 
-## 3MF export
+## Physical dimensions
 
-The in-browser writer uses `fflate` to generate a standards-shaped OPC package with `[Content_Types].xml`, `_rels/.rels`, and `3D/3dmodel.model`. It sets `unit="millimeter"` and writes one indexed mesh object. Geometry is checked for finite vertices, valid indices, and non-empty triangles before download.
+Braille measurements are intentionally fixed instead of being scaled with the plate:
+
+| Measurement | Value |
+| --- | ---: |
+| Dot diameter | 1.55 mm |
+| Raised dot height | 0.70 mm |
+| Intra-cell pitch | 2.40 mm |
+| Cell pitch | 6.20 mm |
+| Line pitch | 10.00 mm |
+
+The plate padding is also its rounded-corner radius. With a keychain enabled, the top-left plate corner becomes square and a disk centred at that original corner is merged into the plate; its central opening is subtracted as a full through-hole.
 
 ## Development
 
-Requires current Node LTS (Node 24 recommended).
+### Requirements
+
+- Current Node.js LTS (Node 24 recommended)
+- A modern browser with WebAssembly support (Chromium, Firefox, or Safari)
+
+### Install and run
 
 ```bash
 npm install
 npm run dev
+```
+
+### Verify a production build
+
+```bash
 npm test
 npm run build
 ```
 
-Modern WebAssembly-capable Chromium, Firefox, and Safari are supported. The production build is entirely static.
+## Deployment
 
-## GitHub Pages
+The included GitHub Actions workflow builds, tests, and publishes the static app to GitHub Pages after each push to `main`. In the repository’s **Settings → Pages**, choose **GitHub Actions** as the publishing source once.
 
-The included workflow deploys automatically after each push to `main`. In the repository’s **Settings → Pages**, choose **GitHub Actions** as the publishing source once. The first successful workflow publishes the static `dist/` artifact; no server configuration is required.
+## Printing notes
 
-## Slicer verification
+The exporter creates a 3MF OPC package containing one indexed mesh in millimetres. Geometry is validated for finite vertices, valid triangle indices, and non-empty output before download.
 
-The generated 3MF package has automated structure tests. Manual import checks in OrcaSlicer, Bambu Studio, and PrusaSlicer remain a release checklist item for the environment where the app is deployed; do not claim slicer certification until those imports have been performed.
+The generated files should be imported and checked in your own slicer and print workflow. This project uses selected tactile dimensions, but it is not a substitute for professional review or a determination of legal accessibility-signage compliance.
 
-This tool uses selected tactile dimensions but is not a substitute for professional review or a determination of legal accessibility-signage compliance.
+## License
+
+This project’s application code is available under the [MIT License](LICENSE).
+
+Liblouis and its table assets are distributed under their own LGPL-2.1-or-later licensing and copyright notices. Review those terms before redistributing the bundled runtime or translation tables.
