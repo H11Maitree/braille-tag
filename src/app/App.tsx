@@ -75,6 +75,19 @@ export default function App() {
   const state = useTagStore(); const { patch, patchKeychain } = state
   const [translated, setTranslated] = useState<string[]>([]); const [translatedFor, setTranslatedFor] = useState(''); const [status, setStatus] = useState<TranslationStatus>('initializing'); const [translationError, setTranslationError] = useState(''); const [exporting, setExporting] = useState(false); const [exportError, setExportError] = useState(''); const [resetNonce, setResetNonce] = useState(0)
   const stablePreview = useRef<{ state: TagState; layout: TagLayout } | null>(null)
+  useEffect(() => {
+    const viewport = window.visualViewport
+    const updateViewportHeight = () => document.documentElement.style.setProperty('--app-visual-viewport-height', `${Math.round(viewport?.height ?? window.innerHeight)}px`)
+    updateViewportHeight()
+    viewport?.addEventListener('resize', updateViewportHeight)
+    viewport?.addEventListener('scroll', updateViewportHeight)
+    window.addEventListener('resize', updateViewportHeight)
+    return () => {
+      viewport?.removeEventListener('resize', updateViewportHeight)
+      viewport?.removeEventListener('scroll', updateViewportHeight)
+      window.removeEventListener('resize', updateViewportHeight)
+    }
+  }, [])
   const normalizedText = state.textContent.replace(/\r\n?/g, '\n')
   const shareState = useMemo<TagState>(() => ({ textContent: state.textContent, plateThickness: state.plateThickness, platePadding: state.platePadding, keychain: { ...state.keychain } }), [state.textContent, state.plateThickness, state.platePadding, state.keychain])
   useEffect(() => { const timer = window.setTimeout(() => { const url = new URL(window.location.href); if (isDefaultTagState(shareState, DEFAULT_STATE)) url.searchParams.delete(TAG_QUERY_PARAM); else url.searchParams.set(TAG_QUERY_PARAM, serializeTagState(shareState)); window.history.replaceState(null, '', url) }, 180); return () => window.clearTimeout(timer) }, [shareState])
@@ -98,7 +111,7 @@ export default function App() {
     <div className="mobile-editor">
       <Drawer>
         <Button className="mobile-edit-button" variant="primary"><SlidersHorizontal size={19}/><span>Edit tag</span></Button>
-        <Drawer.Backdrop variant="blur"><Drawer.Content placement="bottom"><Drawer.Dialog aria-label="Edit tag"><Drawer.Handle /><Drawer.Header><Drawer.CloseTrigger><X size={19}/></Drawer.CloseTrigger></Drawer.Header><Drawer.Body><ControlsPanel {...panelProps} showExport={false}/></Drawer.Body>{state.textContent !== '' && <Drawer.Footer><ExportButton exporting={exporting} canExport={canExport} onExport={exportModel}/></Drawer.Footer>}</Drawer.Dialog></Drawer.Content></Drawer.Backdrop>
+        <Drawer.Backdrop variant="blur"><Drawer.Content placement="bottom"><Drawer.Dialog aria-label="Edit tag"><Drawer.Handle /><Drawer.Header><Drawer.CloseTrigger><X size={19}/></Drawer.CloseTrigger></Drawer.Header><Drawer.Body onFocusCapture={(event) => window.setTimeout(() => (event.target as HTMLElement).scrollIntoView({ block: 'center', behavior: 'smooth' }), 250)}><ControlsPanel {...panelProps} showExport={false}/></Drawer.Body>{state.textContent !== '' && <Drawer.Footer><ExportButton exporting={exporting} canExport={canExport} onExport={exportModel}/></Drawer.Footer>}</Drawer.Dialog></Drawer.Content></Drawer.Backdrop>
       </Drawer>
     </div>
   </main>
