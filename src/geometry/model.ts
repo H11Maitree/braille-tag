@@ -1,10 +1,9 @@
 import type { TagLayout, TagState } from '../types/tag'
-import { BRAILLE } from '../braille/constants'
 import { plateOutline } from './plate'
+import { DOME_CIRCULAR_SEGMENTS, DOME_RADIUS, domeCenterZ } from './dome'
 
 export interface TriangleMesh { vertices: Float32Array; triangles: Uint32Array }
 
-const DOME_CIRCULAR_SEGMENTS = 16
 const UNION_BATCH_SIZE = 64
 
 /** Builds a balanced CSG tree so a long inscription does not create a deep, memory-heavy boolean chain. */
@@ -34,8 +33,11 @@ export async function createFinalManifold(state: TagState, layout: TagLayout): P
     const hole = Manifold.Manifold.cylinder(state.plateThickness + .2, state.keychain.innerRadius, state.keychain.innerRadius, 48).translate(c.x, c.y, -.1)
     solid = solid.add(outer).subtract(hole)
   }
-  const sphereRadius = (BRAILLE.dotRadius ** 2 + BRAILLE.dotHeight ** 2) / (2 * BRAILLE.dotHeight)
-  const domes = layout.dots.map((dot) => Manifold.Manifold.sphere(sphereRadius, DOME_CIRCULAR_SEGMENTS).translate(dot.x, dot.y, state.plateThickness + BRAILLE.dotHeight - sphereRadius))
+  // Keep the tactile cap shape, but remove the hidden sphere volume below the
+  // plate underside so thin plates cannot expose a dot through the back.
+  const domes = layout.dots.map((dot) => Manifold.Manifold.sphere(DOME_RADIUS, DOME_CIRCULAR_SEGMENTS)
+    .translate(dot.x, dot.y, domeCenterZ(state.plateThickness))
+    .trimByPlane([0, 0, 1], 0))
   if (domes.length > 0) solid = solid.add(unionInBatches(Manifold, domes) as typeof solid)
   if (solid.status() !== 'NoError') throw new Error(`Manufacturing geometry failed: ${solid.status()}`)
   const mesh = solid.getMesh()

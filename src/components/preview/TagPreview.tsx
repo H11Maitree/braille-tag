@@ -3,8 +3,8 @@ import { OrbitControls } from '@react-three/drei'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { TagLayout, TagState } from '../../types/tag'
-import { BRAILLE } from '../../braille/constants'
 import { plateOutline } from '../../geometry/plate'
+import { DOME_RADIUS, domeCenterZ, domeThetaLength } from '../../geometry/dome'
 
 /** Creates a printable-looking extruded ring without Shape/Earcut hole triangulation. */
 function annularPrism(innerRadius: number, outerRadius: number, height: number, segments = 64) {
@@ -60,13 +60,14 @@ function Plate({ state, layout }: { state: TagState; layout: TagLayout }) {
   return <mesh geometry={geometry} castShadow receiveShadow><meshStandardMaterial color="#2563eb" metalness={.1} roughness={.36}/></mesh>
 }
 function TagObjects({ state, layout }: { state: TagState; layout: TagLayout }) {
-  const domeRadius = (BRAILLE.dotRadius ** 2 + BRAILLE.dotHeight ** 2) / (2 * BRAILLE.dotHeight)
+  const domeGeometry = useMemo(() => new THREE.SphereGeometry(DOME_RADIUS, 24, 16, 0, Math.PI * 2, 0, domeThetaLength(state.plateThickness)).rotateX(Math.PI / 2), [state.plateThickness])
+  useEffect(() => () => domeGeometry.dispose(), [domeGeometry])
   const keychainGeometry = useMemo(() => {
     if (!layout.keychainCenter || !state.keychain.enabled) return null
     return annularPrism(state.keychain.innerRadius, state.keychain.outerRadius, state.plateThickness)
   }, [layout.keychainCenter?.x, layout.keychainCenter?.y, state.keychain.enabled, state.keychain.innerRadius, state.keychain.outerRadius, state.plateThickness])
   useEffect(() => () => keychainGeometry?.dispose(), [keychainGeometry])
-  return <><Plate state={state} layout={layout}/>{keychainGeometry && layout.keychainCenter && <mesh geometry={keychainGeometry} position={[layout.keychainCenter.x, layout.keychainCenter.y, 0]}><meshStandardMaterial color="#2563eb" metalness={.1} roughness={.36}/></mesh>}{layout.dots.map((dot, i) => <mesh key={i} position={[dot.x, dot.y, state.plateThickness + BRAILLE.dotHeight - domeRadius]} castShadow><sphereGeometry args={[domeRadius, 24, 16]}/><meshStandardMaterial color="#fbbf24" roughness={.28}/></mesh>)}</>
+  return <><Plate state={state} layout={layout}/>{keychainGeometry && layout.keychainCenter && <mesh geometry={keychainGeometry} position={[layout.keychainCenter.x, layout.keychainCenter.y, 0]}><meshStandardMaterial color="#2563eb" metalness={.1} roughness={.36}/></mesh>}{layout.dots.map((dot, i) => <mesh key={i} geometry={domeGeometry} position={[dot.x, dot.y, domeCenterZ(state.plateThickness)]} castShadow><meshStandardMaterial color="#fbbf24" roughness={.28}/></mesh>)}</>
 }
 export function TagPreview({ state, layout, resetNonce, loading = false }: { state: TagState; layout: TagLayout; resetNonce: number; loading?: boolean }) {
   const center: [number, number, number] = [layout.plateWidth / 2, layout.plateHeight / 2, 0]
